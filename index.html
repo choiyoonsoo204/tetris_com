@@ -11,7 +11,8 @@
     display:flex;
     justify-content:center;
     gap:20px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
   }
   canvas {
     background:#000;
@@ -39,7 +40,7 @@
     padding:10px 15px;
     font-size:16px;
   }
-  .mobileControls {
+  #mobileControls {
     flex-direction: row;
     justify-content: center;
     margin-top:10px;
@@ -67,9 +68,9 @@
 
 <canvas id="game" style="display:none;"></canvas>
 
-<!-- 모바일용 버튼만 -->
+<!-- 모바일용 버튼 (화면 아래쪽) -->
 <div id="buttonsContainer" style="display:none;">
-  <div class="controls mobileControls" id="mobileControls">
+  <div class="controls" id="mobileControls">
     <button id="holdBtnM">HOLD</button>
     <button id="rotateBtnM">ROTATE</button>
     <button id="dropBtnM">DROP</button>
@@ -99,11 +100,16 @@ function startGame(){
   gameContainer.style.display="flex";
   canvas.style.display="block";
   buttonsContainer.style.display = isMobile ? "flex" : "none";
+  // 모바일이면 화면 아래로 이동
+  if(isMobile) buttonsContainer.style.position = "fixed";
+  if(isMobile) buttonsContainer.style.bottom = "10px";
+  if(isMobile) buttonsContainer.style.left = "50%";
+  if(isMobile) buttonsContainer.style.transform = "translateX(-50%)";
   mobileControls.style.display = isMobile ? "flex" : "none";
   initGame();
 }
 
-/* ===== 테트리스 기본 ===== */
+/* ===== 테트리스 기본 코드 ===== */
 const ctx = canvas.getContext("2d");
 const holdC=document.getElementById("hold").getContext("2d");
 const nextC=document.getElementById("next").getContext("2d");
@@ -111,7 +117,7 @@ let BLOCK = 30;
 let score=0, level=1, dropSpeed=30;
 
 function resizeCanvas(){
-  const width = Math.min(window.innerWidth*0.6, 300);
+  const width = Math.min(window.innerWidth*0.9, 300);
   BLOCK = width / 10;
   canvas.width = width;
   canvas.height = BLOCK*20;
