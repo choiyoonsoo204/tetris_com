@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Tetris Ghost Line</title>
+<style>
+  body {
+    background:#111;
+    color:white;
+    font-family:Arial;
+    display:flex;
+    justify-content:center;
+    gap:20px;
+  }
+  canvas {
+    background:#000;
+    border:2px solid #aaa;
+  }
+  .side {
+    margin-top:20px;
+  }
+</style>
+</head>
+<body>
+
+<div class="side">
+  <h3>HOLD</h3>
+  <canvas id="hold" width="120" height="120"></canvas>
+  <h3>NEXT</h3>
+  <canvas id="next" width="120" height="120"></canvas>
+  <h3>Score</h3>
+  <div id="score">0</div>
+  <h3>Level</h3>
+  <div id="level">1</div>
+</div>
+
+<canvas id="game" width="300" height="600"></canvas>
+
+<script>
+/* ===== 기본 설정 ===== */
+const COLS=10, ROWS=20, BLOCK=30;
+const game=document.getElementById("game");
+const ctx=game.getContext("2d");
+const holdC=document.getElementById("hold").getContext("2d");
+const nextC=document.getElementById("next").getContext("2d");
+
+let score=0, level=1, dropSpeed=30;
+
+/* ===== 사운드 ===== */
+const audio=new (window.AudioContext||window.webkitAudioContext)();
+function sound(f){const o=audio.createOscillator();o.frequency.value=f;o.connect(audio.destination);o.start();o.stop(audio.currentTime+0.05);}
+
+/* ===== 블록 ===== */
+const SHAPES={
+ I:[[1,1,1,1]],
+ O:[[1,1],[1,1]],
+ T:[[0,1,0],[1,1,1]],
+ S:[[0,1,1],[1,1,0]],
+ Z:[[1,1,0],[0,1,1]],
+ J:[[1,0,0],[1,1,1]],
+ L:[[0,0,1],[1,1,1]],
+ P:[[1,1,0],[0,1,1],[0,1,0]]
+};
+const COLORS={I:"#0ff",O:"#ff0",T:"#a0f",S:"#0f0",Z:"#f00",J:"#00f",L:"#fa0",P:"#f0f"};
+
+function newPiece(){
+ const k=Object.keys(SHAPES)[Math.floor(Math.random()*8)];
+ return {shape:SHAPES[k],color:COLORS[k],x:3,y:0};
+}
+
+/* ===== 보드 ===== */
+let board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+let piece=newPiece();
+let next=newPiece();
+let hold=null;
+let canHold=true;
+
+/* ===== 충돌 ===== */
+function collide(p){
+ for(let y=0;y<p.shape.length;y++)
+  for(let x=0;x<p.shape[y].length;x++)
+   if(p.shape[y][x]){
+    let nx=p.x+x, ny=p.y+y;
+    if(nx<0||nx>=COLS||ny>=ROWS||board[ny]?.[nx]) return true;
+   }
+ return false;
+}
+
+/* ===== 고정 ===== */
+function merge(){
+ piece.shape.forEach((r,y)=>r.forEach((v,x)=>{
+  if(v) board[piece.y+y][piece.x+x]=piece.color;
+ }));
+ sound(200);
+ clearLines();
+ piece=next;
+ next=newPiece();
+ canHold=true;
+ if(collide(piece)){
+  alert("GAME OVER");
+  location.reload();
+ }
+}
+
+/* ===== 줄 삭제 ===== */
+function clearLines(){
+ let lines=0;
+ board=board.filter(r=>{if(r.every(v=>v)){lines++;return false;}return true;});
+ while(board.length<ROWS) board.unshift(Array(COLS).fill(0));
+ if(lines){
+  score+=lines*100;
+  if(score>=level*500){level++;dropSpeed=Math.max(5,dropSpeed-3);}
+  document.getElementById("score").innerText=score;
+  document.getElementById("level").innerText=level;
+  sound(500);
+ }
+}
+
+/* ===== 회전 ===== */
+function rotate(){
+ const r=piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
+ const old=piece.shape;
+ piece.shape=r;
+ if(collide(piece)) piece.shape=old;
+ else sound(800);
+}
+
+/* ===== HOLD ===== */
+function holdPiece(){
+ if(!canHold) return;
+ sound(300);
+ if(!hold){hold=piece; piece=next; next=newPiece();}
+ else {[piece,hold]=[hold,piece]; piece.x=3; piece.y=0;}
+ canHold=false;
+}
+
+/* ===== 그리기 ===== */
+function grid(){
+ ctx.strokeStyle="#fff";
+ ctx.lineWidth = 1;
+ for(let x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*BLOCK,0);ctx.lineTo(x*BLOCK,600);ctx.stroke();}
+ for(let y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*BLOCK);ctx.lineTo(300,y*BLOCK);ctx.stroke();}
+}
+function drawBlock(c,x,y,color){c.fillStyle=color;c.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);}
+function drawMini(c,p){
+ c.clearRect(0,0,120,120);
+ if(!p) return;
+ p.shape.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(c,x,y,p.color)));
+}
+
+/* ===== Ghost piece 계산 ===== */
+function getGhost(){
+ let ghost={...piece, shape:piece.shape.map(r=>[...r])};
+ ghost.y = piece.y;
+ while(!collide(ghost)) ghost.y++;
+ ghost.y--;
+ return ghost;
+}
+
+/* ===== Ghost와 블록 양끝 세로선 연결 ===== */
+function drawGhost(){
+ const ghost = getGhost();
+ ghost.shape.forEach((r,y)=>r.forEach((v,x)=>{
+    if(v) drawBlock(ctx, ghost.x+x, ghost.y+y, 'rgba(255,255,255,0.3)');
+ }));
+
+ // 블록 양끝 좌표
+ const leftX = piece.x*BLOCK;
+ const rightX = (piece.x + piece.shape[0].length)*BLOCK;
+ const topY = piece.y*BLOCK;
+ const bottomY = ghost.y*BLOCK + ghost.shape.length*BLOCK;
+
+ ctx.strokeStyle = "#fff";
+ ctx.lineWidth = 2;
+
+ // 왼쪽 선
+ ctx.beginPath();
+ ctx.moveTo(leftX, topY);
+ ctx.lineTo(leftX, bottomY);
+ ctx.stroke();
+
+ // 오른쪽 선
+ ctx.beginPath();
+ ctx.moveTo(rightX, topY);
+ ctx.lineTo(rightX, bottomY);
+ ctx.stroke();
+}
+
+function draw(){
+ ctx.clearRect(0,0,300,600);
+ board.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(ctx,x,y,v)));
+ drawGhost();
+ piece.shape.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(ctx,piece.x+x,piece.y+y,piece.color)));
+ grid();
+ drawMini(holdC,hold);
+ drawMini(nextC,next);
+}
+
+/* ===== 루프 ===== */
+let count=0;
+function update(){
+ count++;
+ if(count>dropSpeed){
+  piece.y++;
+  if(collide(piece)){piece.y--;merge();}
+  count=0;
+ }
+ draw();
+ requestAnimationFrame(update);
+}
+
+/* ===== 입력 ===== */
+document.addEventListener("keydown",e=>{
+ if(e.key==="ArrowLeft"){piece.x--;if(collide(piece))piece.x++;}
+ if(e.key==="ArrowRight"){piece.x++;if(collide(piece))piece.x--;}
+ if(e.key==="ArrowDown"){piece.y++;if(collide(piece))piece.y--;}
+ if(e.key==="ArrowUp") rotate();
+ if(e.key===" "){
+  while(!collide(piece)) piece.y++;
+  piece.y--;
+  merge();
+ }
+ if(e.key==="e"||e.key==="E") holdPiece();
+ if(e.key==="r"||e.key==="R") location.reload();
+});
+
+update();
+</script>
+</body>
+</html>
