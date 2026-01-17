@@ -1,61 +1,102 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>Responsive Tetris with Device Choice</title>
+<meta charset="UTF-8" />
+<title>테트리스 - 모바일/컴퓨터 선택 + 2줄 버튼</title>
 <style>
   body {
-    background:#111;
-    color:white;
-    font-family:Arial;
-    display:flex;
-    justify-content:center;
-    gap:20px;
-    flex-direction: column;
-    align-items: center;
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 20px;
+    height: 100vh;
   }
-  canvas {
-    background:#000;
-    border:2px solid #aaa;
+  canvas#game {
+    background: #000;
+    border: 2px solid #aaa;
     touch-action: none;
+    display: block;
   }
   .side {
     display:flex;
     flex-direction: column;
-    align-items:center;
+    align-items: center;
+    margin-top: 20px;
   }
-  .controls {
-    display:flex;
-    gap:10px;
-    margin-top:10px;
+  #hold, #next {
+    background: #000;
+    border: 2px solid #aaa;
   }
-  #deviceSelect {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-    margin-top:50px;
-  }
-  button {
-    padding:10px 15px;
-    font-size:16px;
-  }
-  #mobileControls {
-    flex-direction: row;
+
+  /* 선택창 */
+  #selectMode {
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.9);
+    display: flex;
     justify-content: center;
-    margin-top:10px;
+    align-items: center;
+    z-index: 2000;
+    flex-direction: column;
+    gap: 20px;
+  }
+  #selectMode button {
+    font-size: 30px;
+    padding: 15px 60px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    background: #444;
+    color: white;
+    transition: background 0.3s ease;
+  }
+  #selectMode button:hover {
+    background: #666;
+  }
+
+  /* 버튼 컨테이너 */
+  #buttonsContainer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #222;
+    box-sizing: border-box;
+    padding: 10px 20px;
+    display: none; /* 초기엔 안 보임 */
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+  }
+  #buttonsContainer .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #buttonsContainer button {
+    flex: 1 1 0;
+    font-size: 28px;
+    padding: 20px 0;
+    border-radius: 15px;
+    border: none;
+    background: #444;
+    color: white;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+  }
+  #buttonsContainer button:active {
+    background: #666;
   }
 </style>
 </head>
 <body>
 
-<div id="deviceSelect">
-  <h2>디바이스 선택</h2>
-  <button id="pcBtn">컴퓨터</button>
-  <button id="mobileBtn">스마트폰</button>
-</div>
-
-<div class="side" id="gameContainer" style="display:none;">
+<div class="side">
   <h3>HOLD</h3>
   <canvas id="hold" width="120" height="120"></canvas>
   <h3>NEXT</h3>
@@ -66,70 +107,44 @@
   <div id="level">1</div>
 </div>
 
-<canvas id="game" style="display:none;"></canvas>
+<canvas id="game" width="300" height="600"></canvas>
 
-<!-- 모바일용 버튼 (화면 아래쪽) -->
-<div id="buttonsContainer" style="display:none;">
-  <div class="controls" id="mobileControls">
+<!-- 모바일/컴퓨터 선택 -->
+<div id="selectMode">
+  <button id="btnPC">컴퓨터 모드</button>
+  <button id="btnMobile">모바일 모드</button>
+</div>
+
+<!-- 버튼들 -->
+<div id="buttonsContainer">
+  <div class="row" id="topRow">
     <button id="holdBtnM">HOLD</button>
-    <button id="rotateBtnM">ROTATE</button>
+    <button id="turnBtnM">TURN</button>
     <button id="dropBtnM">DROP</button>
+  </div>
+  <div class="row" id="bottomRow">
+    <button id="leftBtnM">◀ 왼쪽</button>
+    <button id="downBtnM">▼ 아래</button>
+    <button id="rightBtnM">오른쪽 ▶</button>
   </div>
 </div>
 
 <script>
-/* ===== 디바이스 선택 ===== */
-let isMobile = false;
-const deviceSelect = document.getElementById('deviceSelect');
-const gameContainer = document.getElementById('gameContainer');
-const canvas = document.getElementById('game');
-const buttonsContainer = document.getElementById('buttonsContainer');
-const mobileControls = document.getElementById('mobileControls');
-
-document.getElementById('pcBtn').onclick = ()=>{
-  isMobile=false;
-  startGame();
-};
-document.getElementById('mobileBtn').onclick = ()=>{
-  isMobile=true;
-  startGame();
-};
-
-function startGame(){
-  deviceSelect.style.display="none";
-  gameContainer.style.display="flex";
-  canvas.style.display="block";
-  buttonsContainer.style.display = isMobile ? "flex" : "none";
-  // 모바일이면 화면 아래로 이동
-  if(isMobile) buttonsContainer.style.position = "fixed";
-  if(isMobile) buttonsContainer.style.bottom = "10px";
-  if(isMobile) buttonsContainer.style.left = "50%";
-  if(isMobile) buttonsContainer.style.transform = "translateX(-50%)";
-  mobileControls.style.display = isMobile ? "flex" : "none";
-  initGame();
-}
-
-/* ===== 테트리스 기본 코드 ===== */
-const ctx = canvas.getContext("2d");
+/* ===== 기본 설정 ===== */
+const COLS=10, ROWS=20;
+let BLOCK=30;
+const game=document.getElementById("game");
+const ctx=game.getContext("2d");
 const holdC=document.getElementById("hold").getContext("2d");
 const nextC=document.getElementById("next").getContext("2d");
-let BLOCK = 30;
+
 let score=0, level=1, dropSpeed=30;
 
-function resizeCanvas(){
-  const width = Math.min(window.innerWidth*0.9, 300);
-  BLOCK = width / 10;
-  canvas.width = width;
-  canvas.height = BLOCK*20;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-/* 사운드 */
+/* ===== 사운드 ===== */
 const audio=new (window.AudioContext||window.webkitAudioContext)();
 function sound(f){const o=audio.createOscillator();o.frequency.value=f;o.connect(audio.destination);o.start();o.stop(audio.currentTime+0.05);}
 
-/* 블록 */
+/* ===== 블록 ===== */
 const SHAPES={
  I:[[1,1,1,1]],
  O:[[1,1],[1,1]],
@@ -147,46 +162,45 @@ function newPiece(){
  return {shape:SHAPES[k],color:COLORS[k],x:3,y:0};
 }
 
-/* 보드 */
-let board, piece, next, hold, canHold;
+/* ===== 보드 ===== */
+let board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+let piece=newPiece();
+let next=newPiece();
+let hold=null;
+let canHold=true;
 
-function initGame(){
-  board=Array.from({length:20},()=>Array(10).fill(0));
-  piece=newPiece();
-  next=newPiece();
-  hold=null;
-  canHold=true;
-  count=0;
-  update();
-}
-
-/* 충돌 */
+/* ===== 충돌 ===== */
 function collide(p){
  for(let y=0;y<p.shape.length;y++)
   for(let x=0;x<p.shape[y].length;x++)
    if(p.shape[y][x]){
     let nx=p.x+x, ny=p.y+y;
-    if(nx<0||nx>=10||ny>=20||board[ny]?.[nx]) return true;
+    if(nx<0||nx>=COLS||ny>=ROWS||board[ny]?.[nx]) return true;
    }
  return false;
 }
 
-/* 고정 */
+/* ===== 고정 ===== */
 function merge(){
- piece.shape.forEach((r,y)=>r.forEach((v,x)=>{if(v) board[piece.y+y][piece.x+x]=piece.color;}));
+ piece.shape.forEach((r,y)=>r.forEach((v,x)=>{
+  if(v) board[piece.y+y][piece.x+x]=piece.color;
+ }));
  sound(200);
  clearLines();
  piece=next;
  next=newPiece();
  canHold=true;
- if(collide(piece)){alert("GAME OVER"); location.reload();}
+ if(collide(piece)){
+  alert("GAME OVER");
+  location.reload();
+ }
 }
 
-/* 줄 삭제 */
+/* ===== 줄 삭제 ===== */
 function clearLines(){
  let lines=0;
  board=board.filter(r=>{if(r.every(v=>v)){lines++;return false;}return true;});
- while(board.length<20) board.unshift(Array(10).fill(0));
+ while(board.length<ROWS) board.unshift(Array(COLS).fill(0));
  if(lines){
   score+=lines*100;
   if(score>=level*500){level++;dropSpeed=Math.max(5,dropSpeed-3);}
@@ -196,7 +210,7 @@ function clearLines(){
  }
 }
 
-/* 회전 */
+/* ===== 회전 ===== */
 function rotate(){
  const r=piece.shape[0].map((_,i)=>piece.shape.map(r=>r[i]).reverse());
  const old=piece.shape;
@@ -205,7 +219,7 @@ function rotate(){
  else sound(800);
 }
 
-/* HOLD */
+/* ===== HOLD ===== */
 function holdPiece(){
  if(!canHold) return;
  sound(300);
@@ -214,42 +228,60 @@ function holdPiece(){
  canHold=false;
 }
 
-/* 그리기 */
+/* ===== 그리기 ===== */
 function grid(){
  ctx.strokeStyle="#fff";
- ctx.lineWidth = 1;
- for(let x=0;x<=10;x++){ctx.beginPath();ctx.moveTo(x*BLOCK,0);ctx.lineTo(x*BLOCK,canvas.height);ctx.stroke();}
- for(let y=0;y<=20;y++){ctx.beginPath();ctx.moveTo(0,y*BLOCK);ctx.lineTo(canvas.width,y*BLOCK);ctx.stroke();}
+ ctx.lineWidth=1;
+ for(let x=0;x<=COLS;x++){
+   ctx.beginPath();
+   ctx.moveTo(x*BLOCK,0);
+   ctx.lineTo(x*BLOCK,ROWS*BLOCK);
+   ctx.stroke();
+ }
+ for(let y=0;y<=ROWS;y++){
+   ctx.beginPath();
+   ctx.moveTo(0,y*BLOCK);
+   ctx.lineTo(COLS*BLOCK,y*BLOCK);
+   ctx.stroke();
+ }
 }
 function drawBlock(c,x,y,color){c.fillStyle=color;c.fillRect(x*BLOCK,y*BLOCK,BLOCK,BLOCK);}
-function drawMini(c,p){c.clearRect(0,0,120,120); if(!p) return; p.shape.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(c,x,y,p.color)));}
+function drawMini(c,p){
+ c.clearRect(0,0,120,120);
+ if(!p) return;
+ p.shape.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(c,x,y,p.color)));
+}
 
-/* Ghost piece */
+/* ===== Ghost piece ===== */
 function getGhost(){
- let ghost={...piece, shape:piece.shape.map(r=>[...r])};
- ghost.y = piece.y;
+ let ghost={...piece,shape:piece.shape.map(r=>[...r])};
+ ghost.y=piece.y;
  while(!collide(ghost)) ghost.y++;
  ghost.y--;
  return ghost;
 }
 function drawGhost(){
  const ghost=getGhost();
- ghost.shape.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(ctx, ghost.x+x, ghost.y+y, 'rgba(255,255,255,0.3)')));
- const leftX = piece.x*BLOCK;
- const rightX = (piece.x+piece.shape[0].length)*BLOCK;
- const topY = piece.y*BLOCK;
- const bottomY = ghost.y*BLOCK + ghost.shape.length*BLOCK;
+ ghost.shape.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(ctx,ghost.x+x,ghost.y+y,'rgba(255,255,255,0.3)')));
+ const leftX=piece.x*BLOCK;
+ const rightX=(piece.x+piece.shape[0].length)*BLOCK;
+ const topY=piece.y*BLOCK;
+ const bottomY=ghost.y*BLOCK+ghost.shape.length*BLOCK;
  ctx.strokeStyle="#fff";
  ctx.lineWidth=2;
  ctx.beginPath();
- ctx.moveTo(leftX,topY); ctx.lineTo(leftX,bottomY); ctx.stroke();
+ ctx.moveTo(leftX,topY);
+ ctx.lineTo(leftX,bottomY);
+ ctx.stroke();
  ctx.beginPath();
- ctx.moveTo(rightX,topY); ctx.lineTo(rightX,bottomY); ctx.stroke();
+ ctx.moveTo(rightX,topY);
+ ctx.lineTo(rightX,bottomY);
+ ctx.stroke();
 }
 
-/* 전체 그리기 */
+/* ===== 전체 그리기 ===== */
 function draw(){
- ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.clearRect(0,0,COLS*BLOCK,ROWS*BLOCK);
  board.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(ctx,x,y,v)));
  drawGhost();
  piece.shape.forEach((r,y)=>r.forEach((v,x)=>v&&drawBlock(ctx,piece.x+x,piece.y+y,piece.color)));
@@ -258,48 +290,75 @@ function draw(){
  drawMini(nextC,next);
 }
 
-/* 루프 */
+/* ===== 루프 ===== */
 let count=0;
 function update(){
  count++;
- if(count>dropSpeed){piece.y++; if(collide(piece)){piece.y--; merge();} count=0;}
+ if(count>dropSpeed){
+  piece.y++;
+  if(collide(piece)){
+   piece.y--;
+   merge();
+  }
+  count=0;
+ }
  draw();
  requestAnimationFrame(update);
 }
 
-/* 키 입력 */
+/* ===== 입력 ===== */
 document.addEventListener("keydown",e=>{
  if(e.key==="ArrowLeft"){piece.x--;if(collide(piece))piece.x++;}
  if(e.key==="ArrowRight"){piece.x++;if(collide(piece))piece.x--;}
  if(e.key==="ArrowDown"){piece.y++;if(collide(piece))piece.y--;}
  if(e.key==="ArrowUp") rotate();
- if(e.key===" "){while(!collide(piece)) piece.y++; piece.y--; merge();}
+ if(e.key===" "){
+  while(!collide(piece)) piece.y++;
+  piece.y--;
+  merge();
+ }
  if(e.key==="e"||e.key==="E") holdPiece();
  if(e.key==="r"||e.key==="R") location.reload();
 });
 
-/* 터치 */
-let startX, startY;
-canvas.addEventListener('touchstart', e => { const touch=e.touches[0]; startX=touch.clientX; startY=touch.clientY; });
-canvas.addEventListener('touchend', e => {
- if(!isMobile) return;
- const touch=e.changedTouches[0];
- const dx=touch.clientX-startX; const dy=touch.clientY-startY;
- if(Math.abs(dx)>Math.abs(dy)){
-   if(dx>20){ piece.x++; if(collide(piece)) piece.x--; }
-   else if(dx<-20){ piece.x--; if(collide(piece)) piece.x++; }
- } else {
-   if(dy>20){ piece.y++; if(collide(piece)) piece.y--; }
-   else if(dy<-20) rotate();
- }
+/* ===== 모바일 버튼 ===== */
+const buttonsContainer=document.getElementById('buttonsContainer');
+
+document.getElementById('leftBtnM').addEventListener('click',()=>{
+  piece.x--;
+  if(collide(piece)) piece.x++;
+});
+document.getElementById('rightBtnM').addEventListener('click',()=>{
+  piece.x++;
+  if(collide(piece)) piece.x--;
+});
+document.getElementById('downBtnM').addEventListener('click',()=>{
+  piece.y++;
+  if(collide(piece)) piece.y--;
+});
+document.getElementById('holdBtnM').addEventListener('click',holdPiece);
+document.getElementById('turnBtnM').addEventListener('click',rotate);
+document.getElementById('dropBtnM').addEventListener('click',()=>{
+  while(!collide(piece)) piece.y++;
+  piece.y--;
+  merge();
 });
 
-/* 모바일 버튼 */
-document.getElementById('holdBtnM')?.addEventListener('click', holdPiece);
-document.getElementById('rotateBtnM')?.addEventListener('click', rotate);
-document.getElementById('dropBtnM')?.addEventListener('click', ()=>{
- while(!collide(piece)) piece.y++; piece.y--; merge();
+/* ===== 모드 선택 ===== */
+const selectMode=document.getElementById('selectMode');
+const btnPC=document.getElementById('btnPC');
+const btnMobile=document.getElementById('btnMobile');
+
+btnPC.addEventListener('click',()=>{
+  buttonsContainer.style.display = 'none';
+  selectMode.style.display = 'none';
 });
+btnMobile.addEventListener('click',()=>{
+  buttonsContainer.style.display = 'flex';
+  selectMode.style.display = 'none';
+});
+
+update();
 </script>
 </body>
 </html>
